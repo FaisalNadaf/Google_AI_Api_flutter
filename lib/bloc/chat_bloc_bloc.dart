@@ -13,6 +13,7 @@ class ChatBlocBloc extends Bloc<ChatBlocEvent, ChatBlocState> {
     on<ChatGenetatorNewMessageEvent>(chatGenetatorNewMessageEvent);
   }
   List<ChatBotModel> messages = [];
+  bool isGenrating = false;
 
   FutureOr<void> chatGenetatorNewMessageEvent(
       ChatGenetatorNewMessageEvent event, Emitter<ChatBlocState> emit) async {
@@ -27,6 +28,22 @@ class ChatBlocBloc extends Bloc<ChatBlocEvent, ChatBlocState> {
     emit(
       ChatBotMessageSuccessState(messages: messages),
     );
-    // await ChatRepo.chatTextGenerator(messages);
+    isGenrating = true;
+    String responce = await ChatRepo.chatTextGenerator(messages);
+    if (responce.length > 0) {
+      messages.add(
+        ChatBotModel(
+          role: 'model',
+          parts: [
+            ChartPart(text: responce),
+          ],
+        ),
+      );
+      emit(
+        ChatBotMessageSuccessState(messages: messages),
+      );
+    isGenrating = false;
+
+    }
   }
 }

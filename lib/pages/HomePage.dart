@@ -1,7 +1,10 @@
-import 'package:a/bloc/chat_bloc_bloc.dart';
-import 'package:a/models/chatModel.dart';
+// ignore: file_names
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:a/bloc/chat_bloc_bloc.dart';
+import 'package:a/models/chatModel.dart';
+import 'package:lottie/lottie.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,14 +14,48 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  late TextEditingController textEditingController;
+  late ScrollController scrollController;
+  late ChatBlocBloc chatBlocBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    textEditingController = TextEditingController();
+    scrollController = ScrollController();
+    chatBlocBloc = ChatBlocBloc();
+  }
+
+  @override
+  void dispose() {
+    textEditingController.dispose();
+    scrollController.dispose();
+    chatBlocBloc.close();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scrollController.hasClients) {
+        scrollController.animateTo(
+          scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    TextEditingController textEditingController = TextEditingController();
-    ChatBlocBloc chatBlocBloc = ChatBlocBloc();
     return Scaffold(
       body: BlocConsumer<ChatBlocBloc, ChatBlocState>(
         bloc: chatBlocBloc,
-        listener: (context, state) {},
+        listener: (context, state) {
+          if (state is ChatBotMessageSuccessState) {
+            _scrollToBottom();
+          }
+        },
         builder: (context, state) {
           switch (state.runtimeType) {
             case ChatBotMessageSuccessState:
@@ -26,7 +63,7 @@ class _HomePageState extends State<HomePage> {
                   (state as ChatBotMessageSuccessState).messages;
 
               return Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/bg.jpg'),
                     fit: BoxFit.cover,
@@ -36,8 +73,8 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      margin:
-                          EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 20, horizontal: 20),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -48,43 +85,66 @@ class _HomePageState extends State<HomePage> {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          Icon(
-                            Icons.image_search,
-                            size: 30,
-                          )
+                          // Icon(
+                          //   Icons.image_search,
+                          //   size: 30,
+                          // )
                         ],
                       ),
                     ),
                     Expanded(
                       child: ListView.builder(
+                        controller: scrollController,
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
-                          return Container(
-                              padding: EdgeInsets.symmetric(
+                          return Align(
+                            alignment: messages[index].role == 'user'
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
                                 vertical: 10,
                                 horizontal: 20,
                               ),
-                              margin: EdgeInsets.symmetric(
+                              margin: const EdgeInsets.symmetric(
                                 vertical: 6,
                                 horizontal: 20,
                               ),
-                              width: MediaQuery.of(context).size.width * 0.3,
+                              constraints: BoxConstraints(
+                                maxWidth:
+                                    MediaQuery.of(context).size.width * 0.7,
+                              ),
                               decoration: BoxDecoration(
                                 color: messages[index].role == 'user'
-                                    ? Colors.grey.shade800
-                                    : Colors.deepPurple.shade300,
+                                    ? Colors.blueAccent
+                                    : Colors.grey.shade300,
                                 borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(20),
-                                  bottomRight: Radius.circular(20),
-                                  bottomLeft: Radius.circular(20),
+                                  topLeft: const Radius.circular(20),
+                                  topRight: const Radius.circular(20),
+                                  bottomLeft: messages[index].role == 'user'
+                                      ? const Radius.circular(20)
+                                      : const Radius.circular(0),
+                                  bottomRight: messages[index].role == 'user'
+                                      ? const Radius.circular(0)
+                                      : const Radius.circular(20),
                                 ),
                               ),
-                              child: Text(messages[index].parts.first.text));
+                              child: Text(
+                                messages[index].parts.first.text,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: messages[index].role == 'user'
+                                      ? Colors.white
+                                      : Colors.black87,
+                                ),
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ),
                     Container(
-                      margin: EdgeInsets.symmetric(
+                      margin: const EdgeInsets.symmetric(
                         vertical: 20,
                         horizontal: 15,
                       ),
@@ -94,7 +154,7 @@ class _HomePageState extends State<HomePage> {
                           Expanded(
                             child: TextField(
                               controller: textEditingController,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 26,
                                 color: Colors.white,
                               ),
@@ -110,7 +170,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 filled: true,
                                 fillColor: Colors.grey.shade800,
-                                contentPadding: EdgeInsets.symmetric(
+                                contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 20,
                                 ),
                               ),
@@ -131,11 +191,18 @@ class _HomePageState extends State<HomePage> {
                                   textEditingController.clear();
                                 }
                               },
-                              child: Icon(
-                                Icons.send,
-                                size: 40,
-                                color: Colors.deepPurple.shade300,
-                              ),
+                              child: chatBlocBloc.isGenrating
+                                  ? Container(
+                                      height: 50,
+                                      width: 50,
+                                      child:
+                                          Lottie.asset('assets/loading.json'),
+                                    )
+                                  : Icon(
+                                      Icons.send,
+                                      size: 50,
+                                      color: Colors.deepPurple.shade300,
+                                    ),
                             ),
                           )
                         ],
@@ -146,7 +213,7 @@ class _HomePageState extends State<HomePage> {
               );
 
             default:
-              return SizedBox();
+              return const SizedBox();
           }
         },
       ),

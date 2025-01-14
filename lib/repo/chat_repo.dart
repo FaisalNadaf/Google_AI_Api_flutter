@@ -1,14 +1,17 @@
+import 'dart:math';
+
 import 'package:a/models/chatModel.dart';
 import 'package:a/utils/constants.dart';
 import 'package:dio/dio.dart';
 
 class ChatRepo {
-  static chatTextGenerator(List<ChatBotModel> previousMessage) async {
+  static Future<String> chatTextGenerator(
+      List<ChatBotModel> previousMessage) async {
     Dio dio = Dio();
 
     try {
       final response = await dio.post(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}',
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${API_KEY}',
         data: {
           "contents": previousMessage.map((e) => e.toMap()).toList(),
           "generationConfig": {
@@ -20,9 +23,13 @@ class ChatRepo {
           }
         },
       );
-      print(response.data.contents);
+      if (response.statusCode! >= 200 && response.statusCode! < 300) {
+        return response
+            .data['candidates'].first['content']['parts'].first['text'];
+      }
     } catch (e) {
       print(e);
     }
+    return '';
   }
 }
